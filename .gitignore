@@ -216,3 +216,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# duckdb
+*.duckdb
+*.duckdb.wal
+warehouse/
+
+# dbt
+presas_mx_dbt/target/
+presas_mx_dbt/db_packages/
+presas_mx_dbt/logs/
+logs/
+
+# data
+data/raw/*
+!data/raw/.gitkeep
+data/exports/
+
+*.DS_Store
+

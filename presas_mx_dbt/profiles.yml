@@ -1,0 +1,14 @@
+presas_mx_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "../warehouse.duckdb"
+      threads: 4
+      extensions:
+        - httpfs
+        - parquet
+    prod:
+      type: duckdb
+      path: "../warehouse.duckdb"
+      threads: 4

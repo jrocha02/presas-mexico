@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: dim_presa
+    columns:
+      - name: dam_key
+        tests: [unique, not_null]
+      - name: namo_estimado_mm3
+        description: "NAMO estimado: percentil 99 del volumen histórico (proxy)"
+
+  - name: fct_presa_diario
+    columns:
+      - name: dam_key
+        tests: [not_null]
+      - name: fecha
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [dam_key, fecha]
+
+  - name: snapshot_actual
+    columns:
+      - name: dam_key
+        tests: [unique, not_null]

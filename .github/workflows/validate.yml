@@ -1,0 +1,62 @@
+name: Validate Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-lint:
+    name: Python lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check syntax of all Python files
+        run: |
+          uv run  -m compileall ingest export scripts
+
+  dbt-parse:
+    name: dbt parse + compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install dbt packages
+        working-directory: presas_mx_dbt
+        run: uv run dbt deps
+
+      - name: Seed catalog (small, fast)
+        working-directory: presas_mx_dbt
+        run: uv run dbt seed --target dev
+
+      - name: Parse + compile dbt models
+        working-directory: presas_mx_dbt
+        run: uv run dbt compile --target dev
+
+      - name: Test seed
+        working-directory: presas_mx_dbt
+        run: uv run dbt test --select presas_catalogo --target dev

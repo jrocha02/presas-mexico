@@ -1,0 +1,48 @@
+version: 2
+
+seeds:
+  - name: presas_catalogo
+    description: "Catálogo oficial de 210 presas (CONAGUA SIH 2020 + capacidades NAMO/NAME desde SINAV30)"
+    config:
+      column_types:
+        numero: integer
+        dam_key: varchar
+        state_code: varchar
+        dam_name: varchar
+        dam_name_clean: varchar
+        state: varchar
+        municipality: varchar
+        latitude: double
+        longitude: double
+        altitude_m: integer
+        basin_id: integer
+        basin_name: varchar
+        hydro_region_id: integer
+        hydro_region_name: varchar
+        namo_oficial_mm3: double
+        name_oficial_mm3: double
+        namo_elev_msnm: double
+        name_elev_msnm: double
+        altura_cortina_m: double
+        elev_corona_msnm: double
+        inicio_operacion: integer
+        corriente: varchar
+        uso: varchar
+        tipo_vertedor: varchar
+        nombre_comun: varchar
+    columns:
+      - name: dam_key
+        description: "Clave única CONAGUA"
+        tests: [unique, not_null]
+      - name: numero
+        tests: [unique, not_null]
+      - name: latitude
+        tests: [not_null]
+      - name: longitude
+        tests: [not_null]
+      - name: namo_oficial_mm3
+        description: "Capacidad al NAMO oficial (CONAGUA SINAV30)"
+        tests: [not_null]
+      - name: name_oficial_mm3
+        description: "Capacidad al NAME oficial (CONAGUA SINAV30)"
+        tests: [not_null]

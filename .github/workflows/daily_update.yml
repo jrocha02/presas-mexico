@@ -1,0 +1,93 @@
+name: Daily Update
+
+
+on:
+  schedule:
+    # 13:00 UTC = 7am CDMX (México central), después del corte diario CONAGUA
+    - cron: '0 13 * * *'
+  workflow_dispatch:  # permite correr manualmente
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    name: Fetch + transform + export
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      # ───────── Restaurar warehouse desde el cache ─────────
+      # Cacheamos warehouse.duckdb para no rebackfillar 4M filas cada día.
+      # Si el cache no existe, hacemos backfill completo.
+      - name: Restore warehouse cache
+        id: warehouse-cache
+        uses: actions/cache@v4
+        with:
+          path: warehouse.duckdb
+          key: warehouse-v1-${{ hashFiles('presas_mx_dbt/seeds/presas_catalogo.csv') }}
+          restore-keys: |
+            warehouse-v1-
+
+      # ───────── Si NO hay cache, hacer backfill primero ─────────
+      - name: Initial backfill (only if no cache)
+        if: steps.warehouse-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "No cache hit, running full backfill..."
+          cd presas_mx_dbt && uv run dbt seed && cd ..
+          uv run python -m ingest.fetch_backfill
+          uv run python -m ingest.raw_to_duckdb --source data/raw/backfill_$(date +%F)
+          cd presas_mx_dbt && uv run dbt build && cd ..
+
+      # ───────── Update incremental diario ─────────
+      - name: Fetch incremental
+        run: uv run python -m ingest.fetch_incremental
+
+      - name: Load to DuckDB
+        run: uv run python -m ingest.raw_to_duckdb
+
+      - name: dbt build
+        working-directory: presas_mx_dbt
+        run: uv run dbt build
+
+      - name: Export parquets
+        run: uv run python -m export.parquet_writer
+
+      # ───────── Sanity check ─────────
+      - name: Validate exports exist
+        run: |
+          test -f data/exports/manifest.json
+          test -f data/exports/current/snapshot_actual.parquet
+          test -f data/exports/current/dim_presa.parquet
+          echo "Manifest:"
+          cat data/exports/manifest.json | head -20
+
+      - name: Commit updated parquets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f data/exports/
+          git commit -m "Update data $(date +%F)" || echo "No changes to commit"
+          git push
+          
+      # ───────── Artifacts (útil para debugging) ─────────
+      - name: Upload exports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parquet-exports-${{ github.run_number }}
+          path: data/exports/
+          retention-days: 7
