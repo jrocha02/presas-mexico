@@ -3,12 +3,12 @@ presas_mx_dbt:
   outputs:
     dev:
       type: duckdb
-      path: "../warehouse.duckdb"
+      path: "{{ env_var('DBT_WAREHOUSE_PATH', '../warehouse.duckdb') }}"
       threads: 4
       extensions:
         - httpfs
         - parquet
     prod:
       type: duckdb
-      path: "../warehouse.duckdb"
+      path: "{{ env_var('DBT_WAREHOUSE_PATH', '../warehouse.duckdb') }}"
       threads: 4
