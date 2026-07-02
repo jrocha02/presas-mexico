@@ -1,6 +1,5 @@
 name: Daily Update
 
-
 on:
   schedule:
     # 13:00 UTC = 7am CDMX (México central), después del corte diario CONAGUA
@@ -42,15 +41,16 @@ jobs:
           restore-keys: |
             warehouse-v1-
 
-      # ───────── Si NO hay cache, hacer backfill primero ─────────
+      # ───────── Si NO hay cache, hacer backfill completo ─────────
       - name: Initial backfill (only if no cache)
         if: steps.warehouse-cache.outputs.cache-hit != 'true'
         run: |
           echo "No cache hit, running full backfill..."
-          cd presas_mx_dbt && uv run dbt seed && cd ..
+          uv run dbt deps --project-dir presas_mx_dbt --profiles-dir presas_mx_dbt
+          uv run dbt seed --project-dir presas_mx_dbt --profiles-dir presas_mx_dbt
           uv run python -m ingest.fetch_backfill
           uv run python -m ingest.raw_to_duckdb --source data/raw/backfill_$(date +%F)
-          cd presas_mx_dbt && uv run dbt build && cd ..
+          uv run dbt build --project-dir presas_mx_dbt --profiles-dir presas_mx_dbt
 
       # ───────── Update incremental diario ─────────
       - name: Fetch incremental
@@ -60,8 +60,9 @@ jobs:
         run: uv run python -m ingest.raw_to_duckdb
 
       - name: dbt build
-        working-directory: presas_mx_dbt
-        run: uv run dbt build
+        run: |
+          uv run dbt deps --project-dir presas_mx_dbt --profiles-dir presas_mx_dbt
+          uv run dbt build --project-dir presas_mx_dbt --profiles-dir presas_mx_dbt
 
       - name: Export parquets
         run: uv run python -m export.parquet_writer
@@ -75,19 +76,17 @@ jobs:
           echo "Manifest:"
           cat data/exports/manifest.json | head -20
 
+      # ───────── Commit parquets al repo ─────────
       - name: Commit updated parquets
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f data/exports/
-          git commit -m "Update data $(date +%F)" || echo "No changes to commit"
-          git push
-          
-      # ───────── Artifacts (útil para debugging) ─────────
-      - name: Upload exports as artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: parquet-exports-${{ github.run_number }}
-          path: data/exports/
-          retention-days: 7
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update data $(date +%F)"
+            git pull --rebase origin main
+            git push
+          fi
+7
