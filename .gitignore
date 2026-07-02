@@ -232,6 +232,6 @@ logs/
 data/raw/*
 !data/raw/.gitkeep
 
-*.DS_Store
+*.DS_Store/
 
-*.idea
+.idea/
