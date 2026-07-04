@@ -10,7 +10,6 @@ Pipeline de datos para monitorear las 210 presas principales de México. Descarg
 - **Transformación**: dbt-duckdb 1.10, dbt_utils
 - **Orquestación**: scripts CLI con uv, watermark-based incremental
 - **Export**: parquet con compresión zstd, particionado por estado
-- **Editor**: PyCharm + Neovim, uv para entornos
 
 ## Arquitectura
 
