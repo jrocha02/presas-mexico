@@ -231,6 +231,7 @@ logs/
 # data
 data/raw/*
 !data/raw/.gitkeep
+data/exports/
 
 *.DS_Store/
 

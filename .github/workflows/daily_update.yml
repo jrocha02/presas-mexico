@@ -78,19 +78,37 @@ jobs:
           echo "Manifest:"
           cat data/exports/manifest.json | head -20
 
-      # ───────── Commit parquets al repo ─────────
-      - name: Commit updated parquets
+      # ───────── Publicar parquets como release ─────────
+      # Los parquets NO se commitean al repo (evita bloat de .git).
+      # Se suben como assets de un release rodante `data-latest`,
+      # que se sobrescribe cada día. Consumidores usan URLs estables:
+      #   https://github.com/<owner>/<repo>/releases/latest/download/<file>
+      - name: Package exports
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/exports/
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
+          mkdir -p release_assets
+          cp data/exports/manifest.json release_assets/
+          cp data/exports/current/snapshot_actual.parquet release_assets/
+          cp data/exports/current/dim_presa.parquet release_assets/
+          tar -czf release_assets/exports.tar.gz -C data exports
+          ls -lh release_assets/
+
+      - name: Upload to rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="data-latest"
+          TODAY="$(date +%F)"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Latest data (rolling)" \
+              --notes "Rolling release. Updated daily by workflow. Last update: $TODAY" \
+              --latest
           else
-            git commit -m "Update data $(date +%F)"
-            git pull --rebase origin main
-            git push
+            gh release edit "$TAG" \
+              --notes "Rolling release. Updated daily by workflow. Last update: $TODAY" \
+              --latest
           fi
+          gh release upload "$TAG" release_assets/* --clobber
 
       # ───────── Artifacts (útil para debugging) ─────────
       - name: Upload exports as artifact
