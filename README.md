@@ -131,7 +131,7 @@ Run `dbt docs serve` desde `presas_mx_dbt/` para lineage gráfico.
 
 ## Frontend
 
-El dashboard que consume estos parquets está en [`presas-mexico-webpage`](https://presas-mexico-webpage.vercel.app/).
+El dashboard que consume estos parquets está en [`presas-mexico-webpage`](https://jrocha02.github.io/presas-mexico-webpage/).
 
 ## Licencia
 
